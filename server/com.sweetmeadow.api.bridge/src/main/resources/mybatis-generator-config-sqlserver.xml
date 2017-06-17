@@ -18,7 +18,7 @@
             targetProject="../com.sweetmeadow.api.bridge/src/main/java" type="XMLMAPPER" />
 
         <!-- tables to be generated -->
-        <table schema="t_e_wx_user" tableName="t_e_wx_user">
+        <table schema="dbo.t_rm_payflow" tableName="dbo.t_rm_payflow">
             <generatedKey column="id" sqlStatement="MySql"
                 identity="true" />
         </table>
