@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN" "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd" >
+<generatorConfiguration>
+
+    <context id="context1">
+        <plugin type="org.mybatis.generator.plugins.AddLimitOffsetPlugin" />
+
+        <jdbcConnection driverClass="net.sourceforge.jtds.jdbc.Driver"
+            connectionURL="jdbc:jtds:sqlserver://localhost:1433/;DatabaseName=okposv11"
+            userId="sa" password="rkx312$2017" />
+        <javaModelGenerator targetPackage="com.sweetmeadow.api.bridge.domain.pojo"
+            targetProject="../com.sweetmeadow.api.bridge/src/main/java" />
+
+        <sqlMapGenerator targetPackage="mapper"
+            targetProject="../com.sweetmeadow.api.bridge/src/main/resources" />
+
+        <javaClientGenerator targetPackage="com.sweetmeadow.api.sqlserver.dao.gen"
+            targetProject="../com.sweetmeadow.api.bridge/src/main/java" type="XMLMAPPER" />
+
+        <!-- tables to be generated -->
+        <table schema="t_e_wx_user" tableName="t_e_wx_user">
+            <generatedKey column="id" sqlStatement="MySql"
+                identity="true" />
+        </table>
+    </context>
+</generatorConfiguration>
