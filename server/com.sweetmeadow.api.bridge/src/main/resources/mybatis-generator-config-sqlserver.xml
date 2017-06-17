@@ -6,7 +6,7 @@
         <plugin type="org.mybatis.generator.plugins.AddLimitOffsetPlugin" />
 
         <jdbcConnection driverClass="net.sourceforge.jtds.jdbc.Driver"
-            connectionURL="jdbc:jtds:sqlserver://localhost:1433/;DatabaseName=okposv11"
+            connectionURL="jdbc:jtds:sqlserver://125.211.218.84:1433/;DatabaseName=okposv11"
             userId="sa" password="rkx312$2017" />
         <javaModelGenerator targetPackage="com.sweetmeadow.api.bridge.domain.pojo"
             targetProject="../com.sweetmeadow.api.bridge/src/main/java" />
@@ -18,8 +18,8 @@
             targetProject="../com.sweetmeadow.api.bridge/src/main/java" type="XMLMAPPER" />
 
         <!-- tables to be generated -->
-        <table schema="dbo.t_rm_payflow" tableName="dbo.t_rm_payflow">
-            <generatedKey column="id" sqlStatement="MySql"
+        <table schema="dbo" tableName="t_rm_payflow">
+            <generatedKey column="com_no" sqlStatement="MySql"
                 identity="true" />
         </table>
     </context>
