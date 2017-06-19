@@ -53,6 +53,19 @@
         <filter-name>HttpMethodFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
+
+
+    <filter>
+        <filter-name>restFilter</filter-name>
+        <filter-class>com.sweetmeadow.api.web.controller.filter.RESTCheckFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>restFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+
+
     <!-- Creates the Spring Container shared by all Servlets and Filters -->
     <listener>
         <listener-class>org.springframework.web.util.Log4jConfigListener</listener-class>

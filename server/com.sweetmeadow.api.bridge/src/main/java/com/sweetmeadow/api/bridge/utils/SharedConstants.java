@@ -30,6 +30,10 @@ public class SharedConstants {
 
     public static final String TIMESTAMP_PARAM_NAME = "ts";
 
+    public static final String CLIENT_NAME_PARAM_NAME = "client";
+
+    public static final String CLIENT_SIGN_PARAM_NAME = "sign";
+
     public static final int TIMESTAMP_TORLERRANCE = 1000 * 60 * 5; // 5 minutes
 
     public static final String ERROR_SIGN_TIMESTAMP_EMPTY = "请求时间戳为空，请重试";

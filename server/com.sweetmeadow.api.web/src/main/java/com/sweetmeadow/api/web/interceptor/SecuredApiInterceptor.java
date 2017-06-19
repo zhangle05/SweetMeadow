@@ -3,18 +3,14 @@
  */
 package com.sweetmeadow.api.web.interceptor;
 
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
-import java.net.URLEncoder;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Formatter;
-import java.util.HashMap;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
@@ -25,14 +21,16 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
-import com.octopusdio.api.common.annotation.Login;
+import com.octopusdio.api.common.annotation.Secured;
 import com.octopusdio.api.common.domain.RESTResult;
 import com.sweetmeadow.api.bridge.service.ClientAppService;
 import com.sweetmeadow.api.bridge.utils.SharedConstants;
+import com.sweetmeadow.api.web.controller.filter.BodyCacheRequestWrapper;
 
 import net.sf.json.JSONObject;
 
@@ -66,111 +64,66 @@ public class SecuredApiInterceptor extends HandlerInterceptorAdapter {
             throws Exception {
         Method method = hmethod.getMethod();
         // 用户登录
-        Login login = hmethod.getBean().getClass().getAnnotation(Login.class);
-        if (login == null || !login.required()) {
-            login = method.getAnnotation(Login.class);
+        Secured secure = hmethod.getBean().getClass()
+                .getAnnotation(Secured.class);
+        if (secure == null || !secure.required()) {
+            secure = method.getAnnotation(Secured.class);
         }
-        if (login != null && login.required()) {
-            LOG.info("login required.");
-            String userId = String.valueOf(request.getSession().getAttribute("USERID"));
-
-            boolean isJson = method.getAnnotation(ResponseBody.class) != null;
-            if (StringUtils.isEmpty(userId)) {
-                LOG.info("AuthenticationInterceptor: recirecting "
-                        + request.getRequestURI() + " to login");
-                error400(request, response, isJson);
-                return false;
+        if (secure != null && secure.required()) {
+            LOG.info("nonce required.");
+            RequestMapping rm = method.getAnnotation(RequestMapping.class);
+            boolean isPost = false;
+            if (rm != null && rm.method().length > 0) {
+                isPost = (rm.method()[0] == RequestMethod.POST);
+            }
+            RESTResult result = null;
+            if (isPost) {
+                result = checkPostSign(request, secure.level());
             } else {
-                LOG.info("Pass the interceptor, userId is:" + userId);
+                result = checkGetSign(request, secure.level());
+            }
+            if (result == null) {
+                result = new RESTResult(HttpStatus.BAD_REQUEST,
+                        "Check sign failed!");
+            }
+            if (result.getData() == HttpStatus.OK) {
                 return true;
             }
+            if (!(result.getData() instanceof Integer)) {
+                result.setData(HttpStatus.BAD_REQUEST);
+            }
+            response.setStatus((Integer) result.getData());
+            JSONObject obj = new JSONObject();
+            obj.put("msg", result.getMsg());
+            response.getWriter().write(obj.toString());
+            response.getWriter().flush();
+            return false;
         }
-        LOG.info("Pass the interceptor, no recirection.");
         return true;
     }
 
-    private void error400(HttpServletRequest request,
-            HttpServletResponse response, boolean isJson) throws IOException {
-        LOG.debug("error 400, isJson:" + isJson);
-        // user in session is empty
-        StringBuilder builder = new StringBuilder(
-                request.getRequestURL().toString());
-        String qs = request.getQueryString();
-        if (!StringUtils.isEmpty(qs)) {
-            builder.append("?");
-            builder.append(qs);
+    protected RESTResult checkPostSign(HttpServletRequest request, int level) {
+        if (!(request instanceof BodyCacheRequestWrapper)) {
+            return new RESTResult(HttpStatus.BAD_REQUEST,
+                    "request type error!");
         }
-        String prefix = "";
-        Object prefixObj = request.getAttribute(SharedConstants.URL_PREFIX_KEY);
-        if (prefixObj != null) {
-            prefix = prefixObj.toString();
-        }
-        if (StringUtils.isEmpty(prefix)) {
-            prefix = "lecture";
-        }
-        LOG.info("prefix is:" + prefix);
-        if (isJson) {
-            String redirctUrl = "/" + prefix + "/account/login";
-            JSONObject obj = new JSONObject();
-            obj.put("code", 400);
-            obj.put("msg", "Invalidate Request, please login.");
-            obj.put("url", redirctUrl);
-            String returnurl = request.getHeader("referer"); // Yes, with the
-                                                             // legendary
-                                                             // misspelling.
-            if (!returnurl.contains(prefix)) {
-                returnurl = returnurl.replaceFirst("lecture", prefix);
-            }
-            LOG.info("new returnurl is:" + returnurl);
-            obj.put("returnurl", returnurl);
-            PrintWriter write = response.getWriter();
-            write.write(obj.toString());
-            write.flush();
-        } else {
-            String returnurl = URLEncoder.encode(builder.toString(), "UTF-8");
-            if (!returnurl.contains(prefix)) {
-                returnurl = returnurl.replaceFirst("lecture", prefix);
-            }
-            LOG.info("new returnurl is:" + returnurl);
-            response.sendRedirect(
-                    String.format("/" + prefix + "/account/login?returnurl=%s", returnurl));
-        }
-    }
-
-
-    /**
-     * check if the sign matches the requested parameters
-     *
-     * @return AjaxResult.SUCCESS if the sign matches, otherwise return error
-     *         codes
-     */
-    protected RESTResult checkSign(String appId, String sign,
-            HttpServletRequest request, boolean shouldCheckTimestamp) {
-        if (StringUtils.isEmpty(sign)) {
-            return new RESTResult(HttpStatus.NETWORK_AUTHENTICATION_REQUIRED, "sign is empty!");
+        String requestBody = ((BodyCacheRequestWrapper) request).getBody();
+        if (StringUtils.isEmpty(requestBody)) {
+            return new RESTResult(HttpStatus.BAD_REQUEST,
+                    "request body empty!");
         }
         try {
-            String correctSign = getCorrectSign(request, appId,
-                    shouldCheckTimestamp);
-            LOG.info("check sign for '" + appId + "', correct sign is:"
-                    + correctSign);
-            return compareSign(sign, correctSign);
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            return new RESTResult(HttpStatus.UNAUTHORIZED, e.getMessage());
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return new RESTResult(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return new RESTResult(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            JSONObject json = JSONObject.fromObject(requestBody);
+            return checkSign(json);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return new RESTResult(HttpStatus.BAD_REQUEST,
+                    "request body parse error!");
         }
     }
 
-    protected String getCorrectSign(HttpServletRequest request, String appKey,
-            boolean shouldCheckTimestamp) throws UnsupportedEncodingException,
-            NoSuchAlgorithmException, IllegalArgumentException {
-        HashMap<String, String> keyValues = new HashMap<String, String>();
+    protected RESTResult checkGetSign(HttpServletRequest request, int level) {
+        JSONObject keyValues = new JSONObject();
         @SuppressWarnings("rawtypes")
         Enumeration em = request.getParameterNames();
         while (em.hasMoreElements()) {
@@ -178,7 +131,44 @@ public class SecuredApiInterceptor extends HandlerInterceptorAdapter {
             String value = request.getParameter(name);
             keyValues.put(name, value);
         }
-        return getCorrectSign(keyValues, appKey, shouldCheckTimestamp);
+        return checkSign(keyValues);
+    }
+
+    /**
+     * check if the sign matches the requested parameters
+     *
+     */
+    protected RESTResult checkSign(JSONObject keyValues) {
+        String appName = keyValues
+                .optString(SharedConstants.CLIENT_NAME_PARAM_NAME);
+        if (StringUtils.isEmpty(appName)) {
+            return new RESTResult(HttpStatus.BAD_REQUEST,
+                    "parameter '" + SharedConstants.CLIENT_NAME_PARAM_NAME
+                            + "' is empty!");
+        }
+        String sign = keyValues
+                .optString(SharedConstants.CLIENT_SIGN_PARAM_NAME);
+        if (StringUtils.isEmpty(sign)) {
+            return new RESTResult(HttpStatus.NETWORK_AUTHENTICATION_REQUIRED,
+                    "sign is empty!");
+        }
+        try {
+            String correctSign = getCorrectSign(keyValues, appName);
+            LOG.info("check sign for '" + appName + "', correct sign is:"
+                    + correctSign);
+            return compareSign(sign, correctSign);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            return new RESTResult(HttpStatus.UNAUTHORIZED, e.getMessage());
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return new RESTResult(HttpStatus.INTERNAL_SERVER_ERROR,
+                    e.getMessage());
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            return new RESTResult(HttpStatus.INTERNAL_SERVER_ERROR,
+                    e.getMessage());
+        }
     }
 
     private RESTResult compareSign(String inputSign,
@@ -194,46 +184,39 @@ public class SecuredApiInterceptor extends HandlerInterceptorAdapter {
                     correctSignOrErrorMsg);
         }
         if (!inputSign.equals(correctSignOrErrorMsg)) {
-            return new RESTResult(HttpStatus.UNAUTHORIZED,
-                    "incorrect sign!");
+            return new RESTResult(HttpStatus.UNAUTHORIZED, "incorrect sign!");
         }
         return new RESTResult(HttpStatus.OK);
     }
 
-    protected String getCorrectSign(HashMap<String, String> allKeyValues,
-            String appId, boolean shouldCheckTimestamp)
-            throws UnsupportedEncodingException, IllegalArgumentException,
-            NoSuchAlgorithmException {
-        LOG.debug(
-                "sign excluded, shouldCheckTimestamp:" + shouldCheckTimestamp);
+    protected String getCorrectSign(JSONObject allKeyValues,
+            String appName) throws UnsupportedEncodingException,
+            IllegalArgumentException, NoSuchAlgorithmException {
         allKeyValues.remove("sign");
-        if (shouldCheckTimestamp) {
-            if (!allKeyValues
-                    .containsKey(SharedConstants.TIMESTAMP_PARAM_NAME)) {
-                LOG.warn("timestamp not in the request");
-                return SharedConstants.ERROR_SIGN_TIMESTAMP_EMPTY;
-            }
-            String tsStr = allKeyValues
-                    .get(SharedConstants.TIMESTAMP_PARAM_NAME);
-            try {
-                long ts = Long.parseLong(tsStr);
-                if (SharedConstants.TIMESTAMP_TORLERRANCE < Math
-                        .abs(System.currentTimeMillis() - ts)) {
-                    return SharedConstants.ERROR_SIGN_TIMESTAMP_EXPIRED;
-                }
-            } catch (Exception ex) {
-                return SharedConstants.ERROR_SIGN_TIMESTAMP_EMPTY;
-            }
+        if (!allKeyValues.containsKey(SharedConstants.TIMESTAMP_PARAM_NAME)) {
+            LOG.warn("timestamp not in the request");
+            return SharedConstants.ERROR_SIGN_TIMESTAMP_EMPTY;
         }
-        String appSecret = clientAppService.getClientAppSecret(appId);
+        String tsStr = allKeyValues.optString(SharedConstants.TIMESTAMP_PARAM_NAME);
+        try {
+            long ts = Long.parseLong(tsStr);
+            if (SharedConstants.TIMESTAMP_TORLERRANCE < Math
+                    .abs(System.currentTimeMillis() - ts)) {
+                return SharedConstants.ERROR_SIGN_TIMESTAMP_EXPIRED;
+            }
+        } catch (Exception ex) {
+            return SharedConstants.ERROR_SIGN_TIMESTAMP_EMPTY;
+        }
+        String appSecret = clientAppService.getClientAppSecret(appName);
         if (appSecret != null) {
-            return generateSign(allKeyValues, appId, appSecret);
+            return generateSign(allKeyValues, appName, appSecret);
         }
         return SharedConstants.ERROR_SIGN_CLIENT_NOT_FOUND;
     }
 
-    public String generateSign(HashMap<String, String> keyValues, String appKey,
-            String secretKey)
+    @SuppressWarnings("unchecked")
+    public String generateSign(JSONObject keyValues,
+            String appName, String secretKey)
             throws UnsupportedEncodingException, NoSuchAlgorithmException {
         String paramStr = "";
         List<String> sortedKeys = new ArrayList<String>(keyValues.size());
@@ -241,14 +224,14 @@ public class SecuredApiInterceptor extends HandlerInterceptorAdapter {
         Collections.sort(sortedKeys);
         for (int i = 0; i < sortedKeys.size(); i++) {
             String key = sortedKeys.get(i);
-            String value = keyValues.get(key);
+            String value = keyValues.optString(key);
             if (null == key || "".equals(key) || null == value
                     || "".equals(value)) {
                 continue;
             }
             paramStr += key + "=" + value;
         }
-        String secretText = secretKey + "from=" + appKey + paramStr;
+        String secretText = secretKey + "from=" + appName + paramStr;
         LOG.debug("secret text is:" + secretText);
         MessageDigest crypt = MessageDigest.getInstance("SHA-1");
         crypt.reset();
