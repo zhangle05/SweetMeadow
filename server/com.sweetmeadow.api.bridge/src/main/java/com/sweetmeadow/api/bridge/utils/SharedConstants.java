@@ -24,9 +24,17 @@ public class SharedConstants {
 
     public static final int ONEDAY_SECONDS = 3600 * 24; // seconds for one day
 
-    public static final int TIMESTAMP_TORLERRANCE = 1000 * 60 * 5; // 5 minutes
-
     public static final String URL_PREFIX_KEY = "url-prefix";
 
     public static final int AUTH_EXPIRE_SECONDS = 600;
+
+    public static final String TIMESTAMP_PARAM_NAME = "ts";
+
+    public static final int TIMESTAMP_TORLERRANCE = 1000 * 60 * 5; // 5 minutes
+
+    public static final String ERROR_SIGN_TIMESTAMP_EMPTY = "请求时间戳为空，请重试";
+
+    public static final String ERROR_SIGN_CLIENT_NOT_FOUND = "client not found";
+
+    public static final String ERROR_SIGN_TIMESTAMP_EXPIRED = "本机时间错误，请先调整时间";
 }
