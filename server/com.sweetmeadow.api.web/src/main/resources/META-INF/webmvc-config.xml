@@ -53,8 +53,11 @@
     <mvc:interceptors>
         <mvc:interceptor>
             <mvc:mapping path="/**" />
-            <mvc:exclude-mapping path="/mock/**" />
             <bean class="com.sweetmeadow.api.web.interceptor.AuthenticationInterceptor" />
+        </mvc:interceptor>
+        <mvc:interceptor>
+            <mvc:mapping path="/**" />
+            <bean class="com.sweetmeadow.api.web.interceptor.SecuredApiInterceptor" />
         </mvc:interceptor>
     </mvc:interceptors>
 

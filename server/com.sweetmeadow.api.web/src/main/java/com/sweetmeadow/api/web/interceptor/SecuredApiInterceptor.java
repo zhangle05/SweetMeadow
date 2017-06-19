@@ -70,12 +70,12 @@ public class SecuredApiInterceptor extends HandlerInterceptorAdapter {
             secure = method.getAnnotation(Secured.class);
         }
         if (secure != null && secure.required()) {
-            LOG.info("nonce required.");
             RequestMapping rm = method.getAnnotation(RequestMapping.class);
             boolean isPost = false;
             if (rm != null && rm.method().length > 0) {
                 isPost = (rm.method()[0] == RequestMethod.POST);
             }
+            LOG.info("nonce required. isPost: " + isPost);
             RESTResult result = null;
             if (isPost) {
                 result = checkPostSign(request, secure.level());
@@ -89,11 +89,14 @@ public class SecuredApiInterceptor extends HandlerInterceptorAdapter {
             if (result.getData() == HttpStatus.OK) {
                 return true;
             }
-            if (!(result.getData() instanceof Integer)) {
+            if (!(result.getData() instanceof HttpStatus)) {
                 result.setData(HttpStatus.BAD_REQUEST);
             }
-            response.setStatus((Integer) result.getData());
+            int code = ((HttpStatus) result.getData()).value();
+            response.setStatus(code);
+            response.setContentType("text/html; charset=utf-8");
             JSONObject obj = new JSONObject();
+            obj.put("code", code);
             obj.put("msg", result.getMsg());
             response.getWriter().write(obj.toString());
             response.getWriter().flush();
@@ -248,5 +251,9 @@ public class SecuredApiInterceptor extends HandlerInterceptorAdapter {
         String result = formatter.toString();
         formatter.close();
         return result;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(System.currentTimeMillis());
     }
 }

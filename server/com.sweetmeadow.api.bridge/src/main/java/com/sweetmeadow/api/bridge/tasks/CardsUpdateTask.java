@@ -24,7 +24,7 @@ public class CardsUpdateTask extends AbstractScheduledTask {
     }
 
     private void update() {
-        LOG.info("SCHEDULED TASK: update live status");
+        LOG.info("SCHEDULED TASK: update cards");
     }
 
 }

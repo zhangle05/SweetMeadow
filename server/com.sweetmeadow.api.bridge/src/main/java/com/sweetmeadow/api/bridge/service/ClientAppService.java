@@ -24,13 +24,30 @@ public class ClientAppService extends AbstractBaseService {
     private ClientAppMapper clientAppMapper;
 
     public String getClientAppSecret(String clientName) {
-        ClientAppExample example = new ClientAppExample();
-        ClientAppExample.Criteria c = example.createCriteria();
-        c.andNameEqualTo(clientName);
-        List<ClientApp> list = clientAppMapper.selectByExample(example);
-        if (list.size() > 0) {
-            return list.get(0).getSecret();
+        ClientApp client = this.getClientByName(clientName);
+        if (client != null) {
+            return client.getSecret();
         }
         return "";
+    }
+
+    public List<ClientApp> listClients() {
+        ClientAppExample example = new ClientAppExample();
+        return clientAppMapper.selectByExample(example);
+    }
+
+    public ClientApp getClientByName(String name) {
+        ClientAppExample example = new ClientAppExample();
+        ClientAppExample.Criteria c = example.createCriteria();
+        c.andNameEqualTo(name);
+        List<ClientApp> list = clientAppMapper.selectByExample(example);
+        if (list.size() > 0) {
+            return list.get(0);
+        }
+        return null;
+    }
+
+    public int updateClientApp(ClientApp client) {
+        return clientAppMapper.updateByPrimaryKey(client);
     }
 }
