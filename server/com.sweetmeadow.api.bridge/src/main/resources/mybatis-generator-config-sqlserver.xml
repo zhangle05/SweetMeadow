@@ -19,7 +19,7 @@
 
         <!-- tables to be generated -->
         <table schema="dbo" tableName="t_rm_payflow">
-            <generatedKey column="com_no" sqlStatement="MySql"
+            <generatedKey column="com_no" sqlStatement="SqlServer"
                 identity="true" />
         </table>
     </context>

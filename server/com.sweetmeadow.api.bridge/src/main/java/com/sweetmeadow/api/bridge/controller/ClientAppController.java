@@ -39,7 +39,7 @@ public class ClientAppController extends AbstractBaseController {
     private ClientAppService clientSvc;
 
     @RequestMapping("/list")
-    public ResponseEntity<RESTResult> purchaseCheck() {
+    public ResponseEntity<RESTResult> list() {
         try {
             List<ClientApp> clients = clientSvc.listClients();
             for (ClientApp c : clients) {
