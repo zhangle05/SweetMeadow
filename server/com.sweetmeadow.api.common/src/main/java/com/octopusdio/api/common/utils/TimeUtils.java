@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.octopusdio.api.common.service;
+package com.octopusdio.api.common.utils;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -111,5 +111,15 @@ public class TimeUtils {
             }
         }
         return c.getTime();
+    }
+
+    /**
+     * get yesterday by the current time mils
+     * 
+     * @return
+     */
+    public static long yesterday() {
+        long now = System.currentTimeMillis();
+        return now - 24 * 3600 * 1000;
     }
 }

@@ -3,6 +3,7 @@
  */
 package com.sweetmeadow.api.bridge.service;
 
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,25 +21,25 @@ import com.sweetmeadow.api.sqlserver.dao.gen.TRmPayflowMapper;
 @Service
 public class PayflowService extends AbstractBaseService {
 
+    private static final int TIME_SPAN_UPPER = 3600 * 1000;
+
     @Autowired
     private TRmPayflowMapper payflowMapper;
 
-    public long getPayflowCount() {
-        TRmPayflowExample example = new TRmPayflowExample();
-        return payflowMapper.countByExample(example);
-    }
-
-    public List<TRmPayflow> listPayflows(int page, int pageSize) {
-        if (page < 1) {
-            page = 1;
+    public List<TRmPayflow> listPayflows(Date from, Date to) {
+        long now = System.currentTimeMillis();
+        if (from == null) {
+            from = new Date(now - TIME_SPAN_UPPER);
         }
-        if (pageSize <= 0 || pageSize > 500) {
-            pageSize = 20;
+        if (to == null || to.getTime() > now) {
+            to = new Date(now);
+        }
+        if (to.getTime() - from.getTime() > TIME_SPAN_UPPER) {
+            throw new IllegalArgumentException("Time span exceeds '" + TIME_SPAN_UPPER + "' miliseconds.");
         }
         TRmPayflowExample example = new TRmPayflowExample();
-        example.setOrderByClause("oper_date desc");
-        example.setLimit(pageSize);
-        example.setOffset((page - 1) * pageSize);
+        TRmPayflowExample.Criteria c = example.createCriteria();
+        c.andOperDateBetween(from, to);
         return payflowMapper.selectByExample(example);
     }
 
